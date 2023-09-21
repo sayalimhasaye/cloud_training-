@@ -1,0 +1,59 @@
+-------------------------------
+kastern on openshift 
+----------------------
+
+helm repo add kasten https://charts.kasten.io/
+
+oc create ns kasten-io
+
+kubectl annotate volumesnapshotclass volume-snapshot     k10.kasten.io/is-snapshot-class=true
+kubectl annotate storageclass default-storageclass     k10.kasten.io/volume-snapshot-class=volume-snapshot
+
+curl https://docs.kasten.io/tools/k10_primer.sh  | bash /dev/stdin - s default-storageclass     --- change the storage class name
+
+APPS_BASE_DOMAIN=apps.myopenshiftcluster.com    #{put apps.vcet.citiuscloud.com}
+
+API_BASE_DOMAIN=api.myopenshiftcluster.com      #{put apps.vcet.citiuscloud.com}
+
+cat > oauth-sa.yaml <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k10-dex-sa
+  namespace: kasten-io
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirecturi.dex: https://k10-route-kasten-io.${APPS_BASE_DOMAIN}/k10/dex/callback
+EOF
+
+ oc create -f oauth-sa.yaml
+
+ oc get sa -n kasten-io -o yaml k10-dex-sa  ---- to get the secrets 
+  
+oc get secrets <secret name> -o yaml
+
+put value     DEX_TOKEN=(paste the output)
+
+oc get secret router-ca -n openshift-ingress-operator -o jsonpath='{.data.tls\.crt}' | base64 --decode > custom-ca-bundle.pem
+
+oc --namespace kasten-io create configmap custom-ca-bundle-store --from-file=custom-ca-bundle.pem
+
+helm install k10 kasten/k10 --namespace=kasten-io \
+  --set scc.create=true \
+  --set route.enabled=true \
+  --set route.tls.enabled=true \
+  --set auth.openshift.enabled=true \
+  --set auth.openshift.serviceAccount=k10-dex-sa \
+  --set auth.openshift.clientSecret=${DEX_TOKEN} \
+  --set auth.openshift.dashboardURL=https://k10-route-kasten-io.${APPS_BASE_DOMAIN}/k10/ \
+  --set auth.openshift.openshiftURL=https://${API_BASE_DOMAIN}:6443 \
+  --set auth.openshift.insecureCA=true \
+  --set cacertconfigmap.name=custom-ca-bundle-store
+  --set global.persistence.storageClass=default-storageclass (our storage classs name) 
+
+oc get route -n kasten-io    --- list of route 
+
+
+in vi /etc/hosts  --- entry of ingress mean 10.48.70.100 apps.vcet.citiuscloud.com 
+
+
+then serarch on browser with route name/k10/#/
