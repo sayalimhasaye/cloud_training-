@@ -1,0 +1,16 @@
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: dyn-files
+parameters:
+  csi.storage.k8s.io/provisioner-secret-name: ntnx-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ntnx-system
+  dynamicProv: ENABLED
+  nfsServerName: nfs
+  reclaimPolicy: Delete
+  storageType: NutanixFiles
+  volumeBindingMode: Immediate
+provisioner: csi.nutanix.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate

@@ -1,0 +1,8 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: snapshot1
+spec:
+  volumeSnapshotClassName: volsnapclass-files
+  source:
+    persistentVolumeClaimName: pv-claim

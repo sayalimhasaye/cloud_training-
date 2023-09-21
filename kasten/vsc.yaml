@@ -1,0 +1,11 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: volsnapclass-files
+driver: csi.nutanix.com
+parameters:
+  storageType: NutanixFiles
+  csi.storage.k8s.io/snapshotter-secret-name: pe-files-secret
+  csi.storage.k8s.io/snapshotter-secret-namespace: kube-system
+deletionPolicy: Delete
+
