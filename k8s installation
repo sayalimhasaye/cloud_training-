@@ -24,6 +24,8 @@ EOF
     8  lsmod | grep br_netfilter
        lsmod | grep overlay
    10  sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+        subscription-manager register
+         subscription-manager auto-attach
    11  dnf install -y iproute-tc
 ------------------------------------------------------------------------------------------------------------------------
 ***********************************************master only**************************************************************
@@ -39,7 +41,6 @@ EOF
    11  firewall-cmd --permanent --add-port=30000-32767/tcp
    12  firewall-cmd --reload
 ------------------------------------------------------------------------------------------------------------------------------
-   21  subscription-manager register
    22  dnf update -y
    24  yum install -y yum-utils
    25  sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
