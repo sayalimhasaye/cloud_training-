@@ -1,63 +1,86 @@
-setenforce 0
-sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-# disable swap (Fire on all nodes)
+************************************>>Step1 (Fire on all nodes )<<************************************
+
+#>>temporarily disable SELinux. The next time you reboot the server, selinux will be back on.
+sudo setenforce 0 
+
+#>>modify a specific line in the /etc/selinux/config file.
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config  
+
+# disable swap
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-swapoff -a
+swapoff -a #check if swap is off
 
-*********************************************** Step3 : (Fire on all nodes)********************
-
+#>>modify a specific line in the /etc/modules-load.d/k8s.conf file
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
 EOF
 
-      sudo modprobe overlay
-      sudo modprobe br_netfilter
+#>>When you run sudo modprobe <module_name>, you're instructing the system to load the specified kernel module (<module_name>) into the kernel. 
+#>>This is often used to enable or configure hardware, add support for filesystems, or prepare the kernel for specific software or services.
+sudo modprobe overlay
+sudo modprobe br_netfilter
 
-      cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+#>>modify a specific line in the /etc/sysctl.d/k8s.conf
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
 EOF
 
-    7  sudo sysctl --system
-    8  lsmod | grep br_netfilter
-       lsmod | grep overlay
-   10  sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
-        subscription-manager register
-         subscription-manager auto-attach
-   11  dnf install -y iproute-tc
+#>>used to reload the sysctl configuration in a Linux system. 
+sudo sysctl --system
+
+#>>used to list kernel modules and then filter the output to show required output.(Makes sure that changes are done successfully.)
+lsmod | grep br_netfilter
+lsmod | grep overlay
+
+sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+
+#>> Ensure that the machine is registered to rhel dashboard for further installation
+subscription-manager register
+subscription-manager auto-attach
+
+dnf update -y
+dnf install -y iproute-tc
+
 ------------------------------------------------------------------------------------------------------------------------
 ***********************************************master only**************************************************************
-   12  firewall-cmd --permanent --add-port=6443/tcp
-   13  firewall-cmd --permanent --add-port=2379-2380/tcp
-   14  firewall-cmd --permanent --add-port=10250/tcp
-   15  firewall-cmd --permanent --add-port=10251/tcp
-   16  firewall-cmd --permanent --add-port=10252/tcp
-   17  firewall-cmd --reload
+-----------------------------------------------------------------------------------------------------------------------------------------
 
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --reload
+
+-----------------------------------------------------------------------------------------------------------------------------------------
 ***********************************************************worker only*******************************************************
- 10  firewall-cmd --permanent --add-port=10250/tcp
-   11  firewall-cmd --permanent --add-port=30000-32767/tcp
-   12  firewall-cmd --reload
-------------------------------------------------------------------------------------------------------------------------------
-   22  dnf update -y
-   24  yum install -y yum-utils
-   25  sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-   26  yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-   27  dnf remove podman buildah -y
-   28  yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-   29  systemctl enable --now docker
-   30  docker ps
+-----------------------------------------------------------------------------------------------------------------------------------------
 
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=30000-32767/tcp
+firewall-cmd --reload
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
 
+yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
+dnf remove podman buildah -y
+yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+systemctl enable --now docker
+docker ps
+
+-----------------------------------------------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------------------------------------------
 
 containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
-   33  sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
-   34  systemctl restart containerd
-   35  cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+systemctl restart containerd
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
 baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
@@ -67,30 +90,83 @@ gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
 
-   36   yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
-   37  systemctl enable --now kubelet
-   38  systemctl status docker
-   39  kubectl version
-   40  kubeadm version
+yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+systemctl enable --now kubelet
+systemctl status docker
+kubectl version
+kubeadm version
+
 -----------------------------------------------------------------------------------------------------------------------------------------
 ***********************************************master only**************************************************************
-   41  kubeadm init --pod-network-cidr=10.244.0.0/16  --control-plane-endpoint=10.48.71.205 --ignore-preflight-errors=Mem --cri-socket /run/containerd/containerd.sock
-   42  kubectl get no
-   43   mkdir -p $HOME/.kube
-   44    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-   45    sudo chown $(id -u):$(id -g) $HOME/.kube/config
-   46    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+kubeadm init --pod-network-cidr=10.244.0.0/16  --control-plane-endpoint=10.48.71.205 --ignore-preflight-errors=Mem --cri-socket /run/containerd/containerd.sock
+kubectl get no
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+******If the token is lost or unavailable*******
+kubeadm token create --print-join-command
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------------------------------------------------
 ***********************************************************worker only*******************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------
 
 Join command will be generated by the master node which need to be run on worker node
 **** One more command would be generated for joining another master node.
-**kubeadm join 10.48.71.205:6443 --token f5zh5n.39zcb2nyt3llbhxk         --discovery-token-ca-cert-hash sha256:34653439db3257bf4db180c71355703092ad6b8d01dc3438eae89e78aa317fac**
+**kubeadm join 10.48.71.205:6443 --token f5zh5n.39zcb2nyt3llbhxk --discovery-token-ca-cert-hash sha256:34653439db3257bf4db180c71355703092ad6b8d01dc3438eae89e78aa317fac**
+
+-----------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------------------------
 
 kubectl get no
 
 kubectl create -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
+-----------------------------------------------------------------------------------------------------------------------------------------
+***********************************************************Cluster is ready*******************************************************
+***********************************************************The End*******************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+ALIAS COMMAND **PERMANENT ALIAS**
+
+vi .bashrc
+source .bashrc
+k get no
+
+For temporary**
+alias k=kubectl
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+***********************************************************Resetting cluster*******************************************************
+***********************************************************Fire on all  nodes*******************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+kubeadm reset
+rm -rf .kube/
+ls /etc/cni/
+rm -rf /etc/cni/net.d
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+***********************************************************Resetting cluster*******************************************************
+***********************************************************Fire on all  nodes*******************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------
+issue- coredns pending 
+resolution- containerd restart
 
 *****************************************************************************************************************
 
