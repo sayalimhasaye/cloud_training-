@@ -215,7 +215,7 @@ backend be-apiserver
 systemctl restart haproxy
 
 *********on master-1 only************** 
-kubeadm init --pod-network-cidr=10.244.0.0/16  --control-plane-endpoint=13.126.42.0:6443 --upload-certs 
+kubeadm init --pod-network-cidr=10.244.0.0/16  --control-plane-endpoint=13.126.42.0:6443 --upload-certs  ## in the control-plane just put the ip of the jump post or where the haproxy load balancer is set up ##
 
 
 
