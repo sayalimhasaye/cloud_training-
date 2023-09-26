@@ -1,9 +1,18 @@
-inastallation on ubuntu
+-----------------------------------------------------------------------------------------------------------------------------------------
+*************************************************************************************************************************************************************************************************************************************
+KUBERNETES INSTALLATION FOR UBUNTU 20.04
+https://www.linkedin.com/pulse/install-kubernetes-cluster-ubuntu-kubeadm-abhishek-rana
+https://github.com/kharatramesh/misalpav/tree/main/terraform/installk8sonubuntu
+************************************************************************************************************************************************************************************************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+installation on ubuntu
 ===============================================================================
 https://www.letscloud.io/community/how-to-install-kubernetesk8s-and-docker-on-ubuntu-2004
 https://github.com/kharatramesh/misalpav/blob/main/terraform/installk8sonubuntu/k8s.txt
 ---------------------------------------
-first make dns entries to all m/c
+first, make dns entries to all m/c
 ---------------------------------------
 prerequisite:
   swapoff -a 
