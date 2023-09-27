@@ -1,0 +1,126 @@
+In a Kubernetes cluster with three master nodes, two worker nodes, and a jump host, you'll need to set up an NFS server on a separate machine (not one of the masters or workers) or one of the masters as the NFS server. Here, I'll assume you have a separate machine to serve as the NFS server ( which is your jumphost).
+
+====================================
+Step 1: Set Up the NFS Server (on jump-host)
+On the selected NFS server node, install the NFS server software
+
+sudo apt-get update
+sudo apt-get install nfs-kernel-server    #  { for rhel used nfs-utils }
+
+sudo mkdir /nfs_share
+
+Configure NFS Exports:
+
+Edit the NFS exports configuration file to specify which directories are shared. Add the following line to /etc/exports:
+ /nfs_share  *(rw,insecure,sync,no_subtree_check,no_root_squash)    #----* means it will allow all the ports we can also specify the perticular ip in it 
+
+exportfs -a
+showmount -e
+
+Save the file and restart the NFS server:
+ sudo systemctl restart nfs-kernel-server
+=========================================================
+Install NFS Client on Other Nodes:
+========================================================
+On the master and worker nodes, install the NFS client software
+
+sudo apt-get update               
+sudo apt-get install nfs-common     #  { for rhel used nfs-utils }
+
+sudo mkdir /mnt/nfs_share
+
+sudo mount -t nfs nfs-server-ip:/nfs_share /mnt/nfs_share     ----- if its not run then  {ping nfs-server-ip} ---- still not work then 
+
+sudo firewall-cmd --zone=public --list-all  # Check the zone settings
+sudo firewall-cmd --zone=public --add-service=nfs --permanent
+sudo firewall-cmd --zone=public --add-service=mountd --permanent
+sudo firewall-cmd --zone=public --add-service=rpc-bind --permanent
+sudo firewall-cmd --reload
+
+{ping nfs-server-ip}
+
+again run this 
+sudo mount -t nfs nfs-server-ip:/nfs_share /mnt/nfs_share
+
+
+=================================================================================================
+create nfs storage class by following yaml file 
+=================================================
+---------------------------------------------------
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs # IMPORTANT pvc needs to mention this name
+provisioner: nfs # name can be anything
+parameters:
+  archiveOnDelete: "false"
+-----------------------------------------------------------
+==================================================
+create nfs persistant volume claim 
+===================================
+------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+==========================================
+create nfs pv 
+================-
+---------------------
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs_share
+    server: 10.48.71.241  # --(ip of the nfs server) 
+======================================================
+create deployment using the pvc and nfs storage class 
+-----------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-deployment
+spec:
+  replicas: 2  # You can adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: nfs-pod
+  template:
+    metadata:
+      labels:
+        app: nfs-pod
+    spec:
+      containers:
+        - name: nfs-container
+          image: nginx  # Use any desired container image
+          volumeMounts:
+            - name: nfs-volume
+              mountPath: /mnt/nfs  # Mount path inside the container
+      volumes:
+        - name: nfs-volume
+          persistentVolumeClaim:
+            claimName: nfs-pvc  # Reference the name of your PVC
+============================================
+ create kasten dashboard and take the backup of it by creating the policy it will not take the backup because nfs volume is not CSI capable still u want to do that, we need to inject side car container in it so that it will create policy easily 
+========================================================== 
+use the below link for injecting side car container :
+---- https://docs.kasten.io/latest/install/generic.html?#generic-storage-backup-and-restore  --------
