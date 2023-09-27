@@ -1,0 +1,46 @@
+https://docs.kasten.io/latest/install/other/other.html
+-----------------------------------------------------------
+
+RE_REQUISITES: Create Storage Class, Secrets, PVC & PV, 
+
+Install helm 
+===============
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+helm version
+================================
+Do a pre-check to see if any installation is pending (https://docs.kasten.io/latest/install/requirements.html#install-prereqs)
+
+curl https://docs.kasten.io/tools/k10_primer.sh | bash 
+                OR
+curl https://docs.kasten.io/tools/k10_primer.sh  | bash /dev/stdin - s <STORAGE_CLASS_NAME>
+========================================================
+In case jq & epel-release is not installed then run
+yum install jq -y
+yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+-------------------------------------------------------
+ Repeat the Second step to do a pre-check.
+-------------------------------------------------------
+ Add helm repo
+helm repo add kasten https://charts.kasten.io/
+-------------------------------------------------------
+
+Create a separate namespace for Kasten-io  
+kubectl create ns kasten-io
+-------------------------------------------------------
+Create Annotation for VolumeSnapShotclass & StorageClass
+
+kubectl annotate volumesnapshotclass <VOLUME_SNAPSHOTCLASS_NAME>  k10.kasten.io/is-snapshot-class=true
+kubectl annotate storageclass <STORAGECLASS_NAME>  k10.kasten.io/volume-snapshot-class=<VOLUME_SNAPSHOTCLASS_NAME>
+-------------------------------------------------------
+Repeat the Second step to do a pre-check.
+-------------------------------------------------------
+Install Kasten using helm command
+ helm install k10 kasten/k10 --namespace=kasten-io --set global.persistence.storageClass=<STORAGECLASS_NAME>
+-------------------------------------------------------
+Check if PVC is in Bound Status
+kubectl get pvc -n kasten-io
+-------------------------------------------------------
+Set kube-context
+ kubectl config set-context --current --namespace kasten-io
