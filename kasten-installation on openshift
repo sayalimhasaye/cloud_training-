@@ -1,5 +1,5 @@
 -------------------------------
-kastern on openshift 
+kasten on openshift 
 ----------------------
 
 helm repo add kasten https://charts.kasten.io/
