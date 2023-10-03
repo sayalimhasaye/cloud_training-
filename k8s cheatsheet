@@ -1,0 +1,98 @@
+Kubernetes Cheatsheet
+"""""""""""""""""""""""""""""""""
+	
+	Kubernetes Basics:
+
+kubectl version: Check the Kubernetes client and server versions.
+
+kubectl cluster-info: View cluster details.
+
+kubectl api-resources : it will show all the resources along with the apiVersion and there shortname 
+
+kubectl get pods: List all pods in the current namespace.
+
+kubectl get nodes: List all nodes in the cluster.
+
+kubectl get [object name]: show the object  
+
+kubectl describe pod [pod-name]: Get detailed information about a pod 
+===============================================================
+
+	Creating and Managing Resources:
+
+kubectl create -f [yaml-file]: Create a resource from a YAML file.
+
+kubectl apply -f [yaml-file]: Apply changes to a resource.
+
+kubectl delete [resource-type] [resource-name]: Delete a resource.
+
+kubectl edit [resource-type] [resource-name]: Edit a resource in the default text editor if the resources are not get edited it will create a new tmp file and the use replace --force -f file name 
+
+kubectl get [resource-type]: List resources of a specific type.
+
+kubectl logs [pod-name]: View logs of a pod.
+Scaling:
+
+kubectl scale deployment [deployment-name] --replicas=[num-replicas]: Scale a deployment.
+
+kubectl autoscale deployment [deployment-name] --min=[min-replicas] --max=[max-replicas]: Autoscale a deployment.
+===============================================================
+	Networking:
+
+kubectl expose [resource-type] [resource-name] --port=[port] --target-port=[target-port] --type=[service-type]:Expose a resource as a service.
+
+kubectl get svc: List services.
+
+kubectl port-forward [pod-name] [local-port]:[pod-port]: Forward ports from a local machine to a pod.
+===============================================================	
+
+	Configuration:
+
+kubectl config view: View the current configuration.
+
+kubectl config use-context [context-name]: Set the current context.
+
+kubectl config get-context : show all the context, having * in fornt of context mean this will be the present context 
+===============================================================
+	
+	Pods:
+
+kubectl exec -it [pod-name] -- [command]: Execute a command in a pod.
+
+kubectl run [pod-name] --image=[image-name]: Create a new pod running a specific image.
+
+kubectl describe pod [podname]  : detailed info of the pod 
+===============================================================
+
+	Namespaces:
+
+kubectl create namespace [namespace-name]: Create a new namespace.
+
+kubectl get namespaces: List namespaces.
+
+kubectl config set-context --current --namespace=[namespace-name]: Set the default namespace.
+===============================================================
+	
+	Secrets and ConfigMaps:
+
+kubectl create secret generic [secret-name] --from-literal=[key]=[value]: Create a secret.
+
+kubectl create configmap [configmap-name] --from-literal=[key]=[value]: Create a ConfigMap.
+
+kubectl describe secret [secret-name]: View secret details.
+
+kubectl describe configmap [configmap-name]: View ConfigMap details.
+==================================------------------
+	
+	Storage:
+
+kubectl get pv: List persistent volumes.
+
+kubectl get pvc: List persistent volume claims.
+===============================================================
+
+	Advanced Troubleshooting:
+
+kubectl describe [resource-type] [resource-name]: Get detailed information about a resource.
+
+kubectl top [resource-type] [resource-name]: Display resource usage statistics, for that we must have the setup of metrics server 
