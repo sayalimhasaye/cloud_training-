@@ -1,7 +1,7 @@
 https://docs.kasten.io/latest/install/other/other.html
 -----------------------------------------------------------
 
-RE_REQUISITES: Create Storage Class, Secrets, PVC & PV, 
+PRE_REQUISITES: Create Storage Class, Secrets, PVC & PV, 
 
 Install helm 
 ===============
