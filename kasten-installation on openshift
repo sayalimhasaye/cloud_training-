@@ -11,9 +11,9 @@ kubectl annotate storageclass default-storageclass     k10.kasten.io/volume-snap
 
 curl https://docs.kasten.io/tools/k10_primer.sh  | bash /dev/stdin - s default-storageclass     --- change the storage class name
 
-APPS_BASE_DOMAIN=apps.myopenshiftcluster.com    #{put apps.vcet.citiuscloud.com}
+APPS_BASE_DOMAIN=apps.myopenshiftcluster.com    #{put .vcet.citiuscloud.com}
 
-API_BASE_DOMAIN=api.myopenshiftcluster.com      #{put apps.vcet.citiuscloud.com}
+API_BASE_DOMAIN=api.myopenshiftcluster.com      #{put .vcet.citiuscloud.com}
 
 cat > oauth-sa.yaml <<EOF
 apiVersion: v1
