@@ -39,6 +39,20 @@ Repeat the Second step to do a pre-check.
 Install Kasten using helm command
  helm install k10 kasten/k10 --namespace=kasten-io --set global.persistence.storageClass=<STORAGECLASS_NAME>
 -------------------------------------------------------
+Expose the gateway pod
+kubectl edit pod <gatway-pod> -n kasten-io
+edit the service type from ClusterIP to NodePort
+              OR
+kubectl expose pod/gateway --name=svc --type=NodePort --port=80 --target-port=80 -n kasten-io
+-------------------------------------------------------
+Note down the ip of the node where gateway pod is running also the port of the gateway service which we created just now using: kubectl get svc -n kasten-io
+Go to chrome and search <node-ip>:<port>/k10/#/
+-------------------------------------------------------
+If login button is not highlighted in the front page uninstall kasten using:
+helm uninstall k10 -n kasten-io
+and then install kasten using below command:
+helm install k10 kasten/k10 --namespace=kasten-io --version=5.5.6 --set global.persistence.storageClass=<storage-class-name> --set eula.accept=true  --set eula.company="COMPANY NAME" --set eula.email="COMPANY EMAIL"
+-------------------------------------------------------
 Check if PVC is in Bound Status
 kubectl get pvc -n kasten-io
 -------------------------------------------------------
