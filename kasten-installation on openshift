@@ -1,15 +1,84 @@
--------------------------------
-kasten on openshift 
-----------------------
+===============
+secret.yaml
+-----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ntnx-secret
+  namespace: kube-system
+stringData:
+ key: 10.55.45.37:9440:admin:nx2Tech585!
+==================
+
+ pvc.yaml 
+----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-claim
+spec:
+  storageClassName: default-sc
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+allowVolumeExpansion: true
+========================
+
+sc.yaml 
+-----
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+    annotations:
+        storageclass.kubernetes.io/is-default-class: "true"
+    name: default-sc
+parameters:
+   csi.storage.k8s.io/provisioner-secret-name: ntnx-secret
+   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+   csi.storage.k8s.io/node-publish-secret-name: ntnx-secret
+   csi.storage.k8s.io/node-publish-secret-namespace: kube-system
+   csi.storage.k8s.io/controller-expand-secret-name: ntnx-secret
+   csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
+   csi.storage.k8s.io/fstype: ext4
+   storageContainer: Default
+  #isSegmentedIscsiNetwork: is-segmented-iscsi-network
+   storageType: NutanixVolumes
+provisioner: csi.nutanix.com
+reclaimPolicy: Retain
+=====================
+
+vsc.yaml
+----
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: volume-snapshot
+driver: csi.nutanix.com
+parameters:
+  storageType: NutanixVolumes
+  csi.storage.k8s.io/snapshotter-secret-name: ntnx-secret
+  csi.storage.k8s.io/snapshotter-secret-namespace: kube-system
+deletionPolicy: Delete
+================================================
+** Steps to install helm **
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+
+chmod 700 get_helm.sh
+
+./get_helm.sh
+===================================
 
 helm repo add kasten https://charts.kasten.io/
 
 oc create ns kasten-io
 
-kubectl annotate volumesnapshotclass volume-snapshot     k10.kasten.io/is-snapshot-class=true
-kubectl annotate storageclass default-storageclass     k10.kasten.io/volume-snapshot-class=volume-snapshot
+kubectl annotate volumesnapshotclass volume-snapshot k10.kasten.io/is-snapshot-class=true
 
-curl https://docs.kasten.io/tools/k10_primer.sh  | bash /dev/stdin - s default-storageclass     --- change the storage class name
+kubectl annotate storageclass default-sc k10.kasten.io/volumesnapshot-class=volume-snapshot
+
+curl https://docs.kasten.io/tools/k10_primer.sh  | bash /dev/stdin - s <storageclass_name>
 
 APPS_BASE_DOMAIN=apps.myopenshiftcluster.com    #{put .vcet.citiuscloud.com}
 
@@ -24,36 +93,58 @@ metadata:
   annotations:
     serviceaccounts.openshift.io/oauth-redirecturi.dex: https://k10-route-kasten-io.${APPS_BASE_DOMAIN}/k10/dex/callback
 EOF
+---
 
- oc create -f oauth-sa.yaml
+oc create -f oauth-sa.yaml
 
- oc get sa -n kasten-io -o yaml k10-dex-sa  ---- to get the secrets 
-  
+oc get sa -n kasten-io -o yaml k10-dex-sa  ---- to get the secrets 
+
 oc get secrets <secret name> -o yaml
 
-put value     DEX_TOKEN=(paste the output)
+oc get sa -n kasten-io -o yaml k10-dex-sa
+
+o/p--> 
+------
+apiVersion: v1
+kind: ServiceAccount
+…...
+secrets:
+- name: k10-dex-sa-token-9mw2f
+- name: k10-dex-sa-dockercfg-lbxdw
+# here we gate two tokens if there is only one token present then do following steps 
+---------------
+desired_secret_name="k10-dex-sa-secret"
+
+kubectl apply --namespace=kasten-io --filename=- <<EOF
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: ${desired_secret_name}
+  annotations:
+    kubernetes.io/service-account.name: "k10-dex-sa"
+EOF
+
+my_token=$(kubectl -n kasten-io get secret $desired_secret_name -o jsonpath='{.data.token}' | base64 -d)
+
+echo ${my_token}
 
 oc get secret router-ca -n openshift-ingress-operator -o jsonpath='{.data.tls\.crt}' | base64 --decode > custom-ca-bundle.pem
 
 oc --namespace kasten-io create configmap custom-ca-bundle-store --from-file=custom-ca-bundle.pem
 
 helm install k10 kasten/k10 --namespace=kasten-io \
+  --set global.persistence.storageClass=nutanix-volume \
   --set scc.create=true \
   --set route.enabled=true \
   --set route.tls.enabled=true \
   --set auth.openshift.enabled=true \
   --set auth.openshift.serviceAccount=k10-dex-sa \
-  --set auth.openshift.clientSecret=${DEX_TOKEN} \
+  --set auth.openshift.clientSecret=${my_token} \
   --set auth.openshift.dashboardURL=https://k10-route-kasten-io.${APPS_BASE_DOMAIN}/k10/ \
   --set auth.openshift.openshiftURL=https://${API_BASE_DOMAIN}:6443 \
   --set auth.openshift.insecureCA=true \
   --set cacertconfigmap.name=custom-ca-bundle-store
-  --set global.persistence.storageClass=default-storageclass (our storage classs name) 
 
-oc get route -n kasten-io    --- list of route 
-
-
-in vi /etc/hosts  --- entry of ingress mean 10.48.70.100 apps.vcet.citiuscloud.com 
-
-
-then serarch on browser with route name/k10/#/
+oc get routes 
+make the entries of ingress ip and route in the /etc/hosts file on local machine
